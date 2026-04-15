@@ -1,0 +1,105 @@
+{
+  "project_name": "Polleria Visual Management System",
+  "theme": "light",
+  "archetype": "Modified Archetype 1 (Organic & Earthy - Warm Polleria Style)",
+  "context": "DASHBOARDS & ADMIN PANELS",
+  "typography": {
+    "headings": {
+      "family": "Outfit",
+      "weights": ["400", "600", "700"],
+      "strategy": "Expressive but clean for dashboard panels. Do not use Inter or generic sans. Tight tracking for sizes over 32px (tracking-tight)."
+    },
+    "body": {
+      "family": "DM Sans",
+      "weights": ["400", "500"],
+      "strategy": "High legibility, geometric body with increased tracking for dense tables."
+    },
+    "hierarchy_rules": "H1 max text-4xl. H2 text-2xl. Body text-sm to text-base for dense tables. Overlines uppercase + tracking-[0.2em] + text-xs."
+  },
+  "colors": {
+    "primary": "#E85D04",
+    "primary_hover": "#DC2F02",
+    "secondary": "#9D0208",
+    "background_base": "#FAEDE5",
+    "surface": "#FFFFFF",
+    "surface_hover": "#F5E6DD",
+    "text_primary": "#1C1917",
+    "text_secondary": "#57534E",
+    "border": "#E7D8C9",
+    "success": "#3A5A40",
+    "warning": "#F4A261",
+    "destructive": "#D90429",
+    "rules": "Avoid pure black and pure white where possible; use tinted warm neutrals. The 'Tinted Grey' rule applies. Background base is a very soft warm cream. Surfaces are white with subtle warm borders."
+  },
+  "layout_and_spacing": {
+    "spacing_scale": "Use standard Tailwind scale but apply generous padding for main content areas (p-8). Dense inside tables (py-2 px-3).",
+    "grid_strategy": "Control Room Grid (Mode B). Dense, data-correlation focused. Base grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-6. Every pixel utilized.",
+    "border_radius": "Subtle roundness, max 8px (rounded-md or rounded-lg). Avoid excessive softness. Use sharp edges where appropriate.",
+    "shadows": "Minimal. Avoid large soft shadows. Use 1px solid strokes (border-border) to define surfaces instead of relying solely on shadows. If shadow is used, keep it shadow-sm.",
+    "surfaces": "Neumorphism (Tactile) variant: Flat solid backgrounds with 1px border. No glassmorphism in this dashboard to keep data highly readable."
+  },
+  "components": {
+    "navigation": "Left sidebar panel-type navigation. Clear buttons with icons. Selected state should use the primary color (Warm Orange) with a subtle background tint.",
+    "forms_and_inputs": "Shadcn UI Input, Select, etc. Left-align labels. Clear focus states with ring-2 ring-primary/50.",
+    "tables": "Shadcn Data Tables. Cardless or minimal rectangular style. Zebra striping or subtle hover states (hover:bg-surface_hover) to track rows. No horizontal scrollbars if possible (use responsive grids or sticky columns).",
+    "buttons": "Flat, strong colors. Primary CTA in #E85D04 text-white. Avoid ghost buttons for main actions; use subtle outlined buttons for secondary actions.",
+    "charts": "Recharts. Use warm palette (Orange, Red, Yellow) and Earthy Green for positive metrics. Tooltips must have dark contrast."
+  },
+  "modules": [
+    {
+      "name": "HOME",
+      "description": "Welcome screen with quick access to modules and daily summaries (purchases, production, waste, low stock, most used products)."
+    },
+    {
+      "name": "PURCHASE REGISTRATION",
+      "description": "Register all business purchases. Includes date, product, category, supplier, quantity, unit, equivalence, unit price, total price, observation. Shows price history tracking with up/down arrows (success/destructive colors)."
+    },
+    {
+      "name": "PRODUCTION REGISTRATION & RECIPES",
+      "description": "Register daily prepared products. Includes 'Recipe Management' to configure recipes from scratch. Auto-deducts raw materials and increments cooked inventory based on predefined recipes."
+    },
+    {
+      "name": "WASTE REGISTRATION",
+      "description": "Register waste for both raw materials and cooked products with cost estimation. Auto-deducts stock."
+    },
+    {
+      "name": "RAW MATERIAL INVENTORY",
+      "description": "Shows all raw ingredients grouped by categories (pollo, verduras, papa, arroces y granos, etc.). Automatic unit conversion."
+    },
+    {
+      "name": "COOKED PRODUCT INVENTORY",
+      "description": "Shows prepared products ready for sale."
+    },
+    {
+      "name": "DASHBOARD",
+      "description": "Analytics KPIs: daily/weekly/monthly purchase spending, waste losses, most purchased/consumed products, production cost estimation, price variation products, low stock alerts, recommendations."
+    }
+  ],
+  "motion_and_interactions": {
+    "hover_states": "ALWAYS explicitly set text color on hover (e.g., hover:bg-orange-600 hover:text-white). Button hovers slightly darken.",
+    "transitions": "Use specific properties (transition-colors duration-200 ease-in-out). No transition-all.",
+    "entrance": "Staggered fade-in for table rows or dashboard widgets (framer-motion). Minimalist feedback."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "strategy": "Consistent stroke width. Use warm primary color for active/highlighted icons, neutral for inactive."
+  },
+  "images": {
+    "strategy": "Minimal image usage, focused on dashboard metrics. Can use contextual imagery in empty states or Home welcome banner.",
+    "urls": {
+      "home_banner": "https://images.unsplash.com/photo-1504670813815-f43e2383e08d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjh8MHwxfHNlYXJjaHwzfHxwZXJ1dmlhbiUyMHJvYXN0ZWQlMjBjaGlja2VufGVufDB8fHx8MTc3NjI3NDA5NHww&ixlib=rb-4.1.0&q=85",
+      "empty_inventory": "https://images.unsplash.com/photo-1601001815894-4bb6c81416d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTN8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMGluZ3JlZGllbnRzJTIwdmVnZXRhYmxlcyUyMGNoZWZ8ZW58MHx8fHwxNzc2Mjc0MDk0fDA&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "testing": {
+    "attributes": "All interactive elements must include data-testid attribute (e.g., data-testid='save-purchase-button', data-testid='home-nav-link')."
+  },
+  "instructions_to_main_agent": [
+    "Use standard Tailwind classes matching the defined color hexes by extending tailwind.config.js.",
+    "Apply 'Outfit' for all headings and 'DM Sans' for body text. Update Google Fonts import in index.css.",
+    "Implement Shadcn UI components for Tables, Dialogs, Selects, and Forms.",
+    "Ensure the interface is entirely in Spanish, with Peruvian Soles (S/.) as the currency.",
+    "The layout must have a left sidebar for the 7 modules, avoiding a top-only navbar to maintain dashboard 'control room' feel.",
+    "Recipe Management should be integrated within or alongside Production Registration to allow starting recipes from scratch."
+  ]
+}
