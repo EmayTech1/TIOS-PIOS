@@ -286,8 +286,13 @@ async def create_production(data: ProductionCreate):
     ingredients_used = []
     total_cost = 0
 
+    # Batch fetch all needed raw materials in one query
+    ing_ids = [ing["raw_material_id"] for ing in recipe.get("ingredients", [])]
+    rm_list = await db.raw_materials.find({"id": {"$in": ing_ids}}, {"_id": 0}).to_list(100)
+    rm_map = {rm["id"]: rm for rm in rm_list}
+
     for ing in recipe.get("ingredients", []):
-        rm = await db.raw_materials.find_one({"id": ing["raw_material_id"]}, {"_id": 0})
+        rm = rm_map.get(ing["raw_material_id"])
         if rm:
             factor = get_conversion_factor(rm.get("conversions", []), ing["unit"], rm["unit_base"])
             deduction = ing["quantity"] * multiplier * factor
