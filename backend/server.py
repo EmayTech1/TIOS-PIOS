@@ -380,37 +380,43 @@ async def get_dashboard_summary():
     week_start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
     month_start = now.strftime("%Y-%m-01")
 
-    purchases_today = await db.purchases.find({"date": today}, {"_id": 0}).to_list(1000)
-    purchases_week = await db.purchases.find({"date": {"$gte": week_start}}, {"_id": 0}).to_list(1000)
-    purchases_month = await db.purchases.find({"date": {"$gte": month_start}}, {"_id": 0}).to_list(1000)
+    # Use aggregation pipelines for sums
+    async def agg_sum(collection, date_filter, field):
+        result = await collection.aggregate([
+            {"$match": date_filter},
+            {"$group": {"_id": None, "total": {"$sum": f"${field}"}}}
+        ]).to_list(1)
+        return result[0]["total"] if result else 0
 
-    total_today = sum(p.get("total_price", 0) for p in purchases_today)
-    total_week = sum(p.get("total_price", 0) for p in purchases_week)
-    total_month = sum(p.get("total_price", 0) for p in purchases_month)
+    total_today = await agg_sum(db.purchases, {"date": today}, "total_price")
+    total_week = await agg_sum(db.purchases, {"date": {"$gte": week_start}}, "total_price")
+    total_month = await agg_sum(db.purchases, {"date": {"$gte": month_start}}, "total_price")
+    total_waste = await agg_sum(db.wastes, {"date": {"$gte": month_start}}, "estimated_cost")
 
-    wastes_month = await db.wastes.find({"date": {"$gte": month_start}}, {"_id": 0}).to_list(1000)
-    total_waste = sum(w.get("estimated_cost", 0) for w in wastes_month)
-    wastes_today = [w for w in wastes_month if w.get("date") == today]
+    wastes_today_count = await db.wastes.count_documents({"date": today})
+    productions_today_count = await db.productions.count_documents({"date": today})
 
-    productions_today = await db.productions.find({"date": today}, {"_id": 0}).to_list(1000)
-    productions_month = await db.productions.find({"date": {"$gte": month_start}}, {"_id": 0}).to_list(1000)
-
-    raw_materials = await db.raw_materials.find({}, {"_id": 0}).to_list(1000)
+    # Lightweight queries with projections
+    raw_materials = await db.raw_materials.find({}, {"_id": 0, "id": 1, "name": 1, "stock": 1, "stock_min": 1, "unit_base": 1}).to_list(1000)
     low_stock = [m for m in raw_materials if m.get("stock_min", 0) > 0 and m.get("stock", 0) <= m.get("stock_min", 0)]
 
-    # Most purchased
-    spending = {}
-    for p in purchases_month:
-        n = p.get("product_name", "")
-        spending[n] = spending.get(n, 0) + p.get("total_price", 0)
-    most_purchased = sorted(spending.items(), key=lambda x: x[1], reverse=True)[:5]
+    # Most purchased (aggregation)
+    most_purchased_agg = await db.purchases.aggregate([
+        {"$match": {"date": {"$gte": month_start}}},
+        {"$group": {"_id": "$product_name", "total": {"$sum": "$total_price"}}},
+        {"$sort": {"total": -1}},
+        {"$limit": 5}
+    ]).to_list(5)
+    most_purchased = [(p["_id"], p["total"]) for p in most_purchased_agg]
 
-    # Most produced
-    prod_count = {}
-    for p in productions_month:
-        n = p.get("product_name", "")
-        prod_count[n] = prod_count.get(n, 0) + p.get("quantity", 0)
-    most_produced = sorted(prod_count.items(), key=lambda x: x[1], reverse=True)[:5]
+    # Most produced (aggregation)
+    most_produced_agg = await db.productions.aggregate([
+        {"$match": {"date": {"$gte": month_start}}},
+        {"$group": {"_id": "$product_name", "total": {"$sum": "$quantity"}}},
+        {"$sort": {"total": -1}},
+        {"$limit": 5}
+    ]).to_list(5)
+    most_produced = [(p["_id"], p["total"]) for p in most_produced_agg]
 
     # Price variations (single aggregation instead of N+1 queries)
     price_vars = []
@@ -429,12 +435,14 @@ async def get_dashboard_summary():
                 if abs(pct) > 3:
                     price_vars.append({"product": mat_name_map.get(mat_id, ""), "current": cur, "previous": prev, "pct": round(pct, 1)})
 
-    # Waste by product
-    waste_by = {}
-    for w in wastes_month:
-        n = w.get("product_name", "")
-        waste_by[n] = waste_by.get(n, 0) + w.get("estimated_cost", 0)
-    top_waste = sorted(waste_by.items(), key=lambda x: x[1], reverse=True)[:5]
+    # Waste by product (aggregation)
+    top_waste_agg = await db.wastes.aggregate([
+        {"$match": {"date": {"$gte": month_start}}},
+        {"$group": {"_id": "$product_name", "cost": {"$sum": "$estimated_cost"}}},
+        {"$sort": {"cost": -1}},
+        {"$limit": 5}
+    ]).to_list(5)
+    top_waste = [(w["_id"], w["cost"]) for w in top_waste_agg]
 
     # Recommendations
     recs = []
@@ -447,20 +455,25 @@ async def get_dashboard_summary():
     for item in low_stock:
         recs.append({"type": "stock", "message": f"{item['name']} tiene stock bajo ({item.get('stock', 0):.0f} {item.get('unit_base', '')}). Reabastecer.", "severity": "critical"})
 
-    # Last 7 days purchases
+    # Last 7 days purchases (aggregation)
+    seven_days_ago = (now - timedelta(days=6)).strftime("%Y-%m-%d")
+    daily_agg = await db.purchases.aggregate([
+        {"$match": {"date": {"$gte": seven_days_ago}}},
+        {"$group": {"_id": "$date", "total": {"$sum": "$total_price"}}}
+    ]).to_list(7)
+    daily_map = {d["_id"]: d["total"] for d in daily_agg}
     purchases_by_day = []
     for i in range(6, -1, -1):
         day = (now - timedelta(days=i)).strftime("%Y-%m-%d")
-        day_p = [p for p in purchases_month if p.get("date") == day] if day >= month_start else await db.purchases.find({"date": day}, {"_id": 0}).to_list(1000)
-        purchases_by_day.append({"date": day, "total": round(sum(p.get("total_price", 0) for p in day_p), 2)})
+        purchases_by_day.append({"date": day, "total": round(daily_map.get(day, 0), 2)})
 
     return {
         "purchases_today": round(total_today, 2),
         "purchases_week": round(total_week, 2),
         "purchases_month": round(total_month, 2),
-        "wastes_today_count": len(wastes_today),
+        "wastes_today_count": wastes_today_count,
         "wastes_month_cost": round(total_waste, 2),
-        "productions_today_count": len(productions_today),
+        "productions_today_count": productions_today_count,
         "low_stock_count": len(low_stock),
         "low_stock_items": [{k: v for k, v in m.items() if k != "_id"} for m in low_stock[:5]],
         "most_purchased": [{"name": n, "total": round(t, 2)} for n, t in most_purchased],
